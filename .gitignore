@@ -3,3 +3,14 @@
 *.mp3
 .DS_Store
 */.DS_Store
+# /w3/magnatagatune_project/mp3/*
+
+
+# OS generated files 
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
