@@ -1,12 +1,27 @@
 import simplejson as json
 from flask import Flask
-from flask import send_file, request, jsonify
+from flask import send_from_directory, request, jsonify
+from flask_cors import CORS
+import os
 
-from web_server.common.melody import Melody
+from common.melody import Melody
 import time
 
-# app = Flask(__name__, static_url_path='', static_folder=os.path.abspath('../static'))
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
+CORS(app)
+
+@app.route('/js/<path:path>')
+def send_js(path):
+    print(path)
+    return app.send_static_file(os.path.join('js', path))
+
+@app.route('/images/<path:path>')
+def send_images(path):
+    return app.send_static_file(os.path.join('images', path))
+
+@app.route('/')
+def root():
+    return app.send_static_file('index.html')
 
 @app.route('/duet', methods=['POST'])
 def duet():
@@ -23,6 +38,7 @@ def duet():
         ]
     '''
     now = time.time()
+    print(request.data)
     input_melody = json.loads(request.data)
 
     print('request.data', input_melody)

@@ -1,0 +1,238 @@
+<html>
+  <head>
+    <script src="js/audiokeys.js"></script>
+    <script src="js/jquery-3.2.1.min.js"></script>
+
+    <style>
+      img
+      {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+
+    <label for="rows">Keyboard Layout:</label>
+    <select name="rows" id="row-select">
+      <option value="1">1 Row</option>
+      <option value="2">2 Rows</option>
+    </select><br>
+
+    <label for="polyphony">Polyphony:</label>
+    <select name="polyphony" id="polyphony">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select><br>
+
+    <label for="priority">Priority:</label>
+    <select name="priority" id="priority">
+      <option value="last">Last</option>
+      <option value="first">First</option>
+      <option value="lowest">Lowest</option>
+      <option value="highest">Highest</option>
+    </select>
+
+    <p></p>
+    <hr>
+
+    <img id="image1" src="images/audiokeys-mapping-rows1.jpg" alt="">
+    <img id="image2" src="images/audiokeys-mapping-rows2.jpg" style="display: none" alt="">
+
+    <script>
+
+      window.context  = new AudioContext();
+      window.keyboard = new AudioKeys({
+        polyphony: 1,
+        rows: 1,
+        priority: 'last'
+      });
+
+      var oneRowLayout = true;
+      var image1 = document.querySelector('#image1');
+      var image2 = document.querySelector('#image2');
+
+      var polyphony = document.querySelector('#polyphony');
+      var priority = document.querySelector('#priority');
+
+      document.querySelector('#row-select').addEventListener('change', function(e) {
+        oneRowLayout = !oneRowLayout;
+        image1.style.display = oneRowLayout ? 'block' : 'none';
+        image2.style.display = oneRowLayout ? 'none' : 'block';
+        keyboard.set('rows', oneRowLayout ? 1 : 2);
+      });
+
+      polyphony.addEventListener('change', function(e) {
+        keyboard.set('polyphony', +e.target.value);
+      });
+
+      priority.addEventListener('change', function(e) {
+        keyboard.set('priority', e.target.value);
+      });
+
+      var MAX_MELODY_NUM = 10;  // 키보드 입력이 10개가 누적되면 서버로 보내어 대응되는 멜로디를 받아옴.
+      var MELODY_INTERVAL_SEC = 3;    // 3초가 키보드 입력이 없으면 그 동안 쌓아놓은 멜로디를 서버로 보내어 대응되는 멜로디를 받아옴.
+
+      var melody = [];    // 멜로디를 누적함
+      var oscillators = {};       // oscillators by human
+      var ai_oscillators = {};    // oscillators by AI
+
+      var timeOutList = [];     // timer를 관리하기 위함.
+      var keyInput = false;     // keyboard.down()이 호출되면 true, keyboard.up()이 호출되면 false
+
+      var clearTimer = function(){
+        timeOutList.forEach(function(timeOut){
+          clearInterval(timeOut);
+        });
+        while(timeOutList.length > 0) {
+          timeOutList.pop();
+        }
+      };
+
+      var note2Frequency = function(note){
+        return ( Math.pow(2, ( note-69 ) / 12) ) * 440.0;
+      }
+
+      // play note
+      var playNote = function(note){
+        var o = context.createOscillator();
+        var g = context.createGain();
+
+        if(!note.frequency){
+          note.frequency = note2Frequency(note.note);
+        }
+
+        o.frequency.value = note.frequency;
+        o.type = 'triangle';
+        g.gain.value = 0;
+        o.connect(g);
+        g.connect(context.destination);
+
+        g.gain.linearRampToValueAtTime(0, context.currentTime);
+        g.gain.linearRampToValueAtTime(note.velocity / 127, context.currentTime + 0.1);
+
+        o.start(0);
+        ai_oscillators[note.note] = {
+          oscillator: o,
+          gain: g,
+          currentTime: context.currentTime,
+          note: note
+        };
+      };
+
+      // stop note
+      var stopNote = function(note){
+        if(ai_oscillators[note.note]) {
+          ai_oscillators[note.note].gain.gain.linearRampToValueAtTime(ai_oscillators[note.note].gain.gain.value, context.currentTime);
+          ai_oscillators[note.note].gain.gain.linearRampToValueAtTime(0, context.currentTime + 0.1);
+          ai_oscillators[note.note].oscillator.stop(context.currentTime + 0.1);
+
+          var duration = context.currentTime - ai_oscillators[note.note].currentTime;
+          delete ai_oscillators[note.note];
+        }
+      };
+
+
+      function sleepFor( sleepDuration ){
+          var now = new Date().getTime();
+          while(new Date().getTime() < now + sleepDuration){ /* do nothing */ } 
+      }
+ 
+      var emitMelody = function(){
+        console.log(melody);
+
+        var data = [];
+        melody.forEach(function(mel){
+          console.log(mel);
+          mel.pitch = mel.note.note;
+          mel.velocity = mel.note.velocity;
+
+          // playNote(mel.note);
+          
+          data.push({
+            pitch: mel.note.note,
+            velocity: mel.note.velocity,
+            duration: mel.duration,
+            offset: mel.offset
+          });
+        });
+        console.log('data', data);
+        // $.post( "/duet", data).done(function( data ) {
+        //   alert( "Data Loaded: " + data );
+        // });
+        $.ajax({
+          type: "POST",
+          url: '/duet',
+          data: JSON.stringify(data),
+          contentType: "application/json",
+          success: function(response){
+            console.log('response', response);
+
+            
+          }
+        });
+
+        while(melody.length > 0) {
+            melody.pop();
+        }
+      };
+
+      keyboard.down( function(note) {
+        var o = context.createOscillator();
+        var g = context.createGain();
+        o.frequency.value = note.frequency;
+        o.type = 'triangle';
+        g.gain.value = 0;
+        o.connect(g);
+        g.connect(context.destination);
+
+        g.gain.linearRampToValueAtTime(0, context.currentTime);
+        g.gain.linearRampToValueAtTime(note.velocity / 127, context.currentTime + 0.1);
+
+        o.start(0);
+        oscillators[note.note] = {
+          oscillator: o,
+          gain: g,
+          currentTime: context.currentTime,
+          note: note
+        };
+        keyInput = true;
+
+        clearTimer();
+      });
+
+      keyboard.up( function(note) {
+        if(oscillators[note.note]) {
+          oscillators[note.note].gain.gain.linearRampToValueAtTime(oscillators[note.note].gain.gain.value, context.currentTime);
+          oscillators[note.note].gain.gain.linearRampToValueAtTime(0, context.currentTime + 0.1);
+          oscillators[note.note].oscillator.stop(context.currentTime + 0.1);
+
+          var duration = context.currentTime - oscillators[note.note].currentTime;
+          console.log('end', oscillators[note.note], duration);
+
+          melody.push({
+            offset: oscillators[note.note].currentTime,
+            duration: duration,
+            note: oscillators[note.note].note
+          });
+          delete oscillators[note.note];
+        }
+        keyInput = false;
+
+        if(melody.length >= MAX_MELODY_NUM){
+          emitMelody();
+        }
+        else{
+          var tOut = setInterval(function(){
+            if(!keyInput){
+              keyInput = true;
+              emitMelody();
+            }
+          }, MELODY_INTERVAL_SEC * 1000);
+          timeOutList.push(tOut);  
+        }
+      });
+    </script>
+  </body>
+</html>
