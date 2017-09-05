@@ -153,10 +153,27 @@
 
       }
 
+      var makeMelody = function(response){
+        var melody = [];
+
+        response.forEach(function(note){
+          melody.push({
+            note: {
+              note: note.pitch,
+              velocity: note.velocity
+            },
+            offset: note.offset,
+            duration: note.duration
+          });
+        });
+
+        return melody;
+      }
+
       var emitMelody = function(){
         var data = [];
 
-        playMelody(melody);
+        // playMelody(melody);
 
         melody.forEach(function(mel){
           mel.pitch = mel.note.note;
@@ -179,7 +196,10 @@
           contentType: "application/json",
           success: function(response){
             console.log('response', response);
-            
+
+            var melody = makeMelody(response);
+            playMelody(melody);
+
           }
         });
 

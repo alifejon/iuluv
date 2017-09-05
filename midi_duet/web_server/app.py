@@ -45,9 +45,14 @@ def duet():
 
     dummy_melody = [Melody.createRandom().toJSON() for _ in range(len(input_melody))]
     dummy_melody = sorted(dummy_melody, key=lambda k: k['offset'])
+
+    for idx, (mel, dummy_mel) in enumerate(zip(input_melody, dummy_melody)):
+        mel['pitch'] = dummy_mel['pitch']
+
     print('dummy_melody', dummy_melody)
 
-    return jsonify(dummy_melody)
+    return jsonify(input_melody)
+    # return jsonify(dummy_melody)
 
 # @app.route('/', methods=['GET', 'POST'])
 # def index():
