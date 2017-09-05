@@ -102,7 +102,6 @@
         if(!note.frequency){
           note.frequency = note2Frequency(note.note);
         }
-
         o.frequency.value = note.frequency;
         o.type = 'triangle';
         g.gain.value = 0;
@@ -133,23 +132,36 @@
         }
       };
 
-
-      function sleepFor( sleepDuration ){
-          var now = new Date().getTime();
-          while(new Date().getTime() < now + sleepDuration){ /* do nothing */ } 
+      var onPauseOffNote = function(mel, minOffset){
+        setTimeout(function(){
+          playNote(mel.note);
+          setTimeout(function(){
+            stopNote(mel.note);
+          }, 1000*(mel.duration));
+        }, 1000*(mel.offset - minOffset));
       }
- 
-      var emitMelody = function(){
-        console.log(melody);
+      var melX, offsetX;
 
-        var data = [];
+      var playMelody = function(melody){
+        var minOffsetNote = melody.reduce(function(prev, curr) {
+            return prev.offset < curr.offset ? prev : curr;
+        });
+
         melody.forEach(function(mel){
-          console.log(mel);
+          onPauseOffNote(mel, minOffsetNote.offset);
+        });
+
+      }
+
+      var emitMelody = function(){
+        var data = [];
+
+        playMelody(melody);
+
+        melody.forEach(function(mel){
           mel.pitch = mel.note.note;
           mel.velocity = mel.note.velocity;
 
-          // playNote(mel.note);
-          
           data.push({
             pitch: mel.note.note,
             velocity: mel.note.velocity,
@@ -157,7 +169,6 @@
             offset: mel.offset
           });
         });
-        console.log('data', data);
         // $.post( "/duet", data).done(function( data ) {
         //   alert( "Data Loaded: " + data );
         // });
@@ -168,7 +179,6 @@
           contentType: "application/json",
           success: function(response){
             console.log('response', response);
-
             
           }
         });
