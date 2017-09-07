@@ -94,6 +94,11 @@
         return ( Math.pow(2, ( note-69 ) / 12) ) * 440.0;
       }
 
+      // send input from user/ai into web-socket
+      var emitToSocket = function(eventData){
+        console.log(eventData);
+      }
+
       // play note
       var playNote = function(note){
         var o = context.createOscillator();
@@ -118,6 +123,15 @@
           currentTime: context.currentTime,
           note: note
         };
+
+        var eventData = {
+          from: 'ai',
+          note: note.note,
+          time: ai_oscillators[note.note].currentTime,
+          type: 'keyDown'
+
+        };
+        emitToSocket(eventData);
       };
 
       // stop note
@@ -128,6 +142,16 @@
           ai_oscillators[note.note].oscillator.stop(context.currentTime + 0.1);
 
           var duration = context.currentTime - ai_oscillators[note.note].currentTime;
+
+          var eventData = {
+            from: 'ai',
+            note: note.note,
+            time: ai_oscillators[note.note].currentTime + duration,
+            type: 'keyUp'
+
+          };
+          emitToSocket(eventData);
+
           delete ai_oscillators[note.note];
         }
       };
@@ -229,6 +253,15 @@
         };
         keyInput = true;
 
+        var eventData = {
+          from: 'user',
+          note: note.note,
+          time: oscillators[note.note].currentTime,
+          type: 'keyDown'
+
+        };
+        emitToSocket(eventData);
+
         clearTimer();
       });
 
@@ -246,6 +279,17 @@
             duration: duration,
             note: oscillators[note.note].note
           });
+
+          console.log('###', note);
+          var eventData = {
+            from: 'user',
+            note: note.note,
+            time: oscillators[note.note].currentTime + duration,
+            type: 'keyUp'
+
+          };
+          emitToSocket(eventData);
+
           delete oscillators[note.note];
         }
         keyInput = false;
