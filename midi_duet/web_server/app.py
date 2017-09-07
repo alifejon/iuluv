@@ -39,25 +39,12 @@ def duet():
         ]
     '''
     now = time.time()
-    print(request.data)
     input_melody = json.loads(request.data)
 
-    print('request.data', input_melody)
+    char_rnn_melody = Melody.createCharRNNSequence(input_melody)
 
-    dummy_melody = [Melody.createRandom().toJSON() for _ in range(len(input_melody))]
-    dummy_melody = sorted(dummy_melody, key=lambda k: k['offset'])
-
-    for idx, (mel, dummy_mel) in enumerate(zip(input_melody, dummy_melody)):
-        mel['pitch'] = mel['pitch'] + (random.randrange(0, 5) - 2)
-
-    print('dummy_melody', dummy_melody)
-
-    return jsonify(input_melody)
+    return jsonify(char_rnn_melody)
     # return jsonify(dummy_melody)
-
-# @app.route('/', methods=['GET', 'POST'])
-# def index():
-#     return send_file('../static/index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
