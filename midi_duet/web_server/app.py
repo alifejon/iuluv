@@ -6,6 +6,7 @@ import os
 
 from common.melody import Melody
 import time
+import random
 
 app = Flask(__name__, static_url_path='/static')
 CORS(app)
@@ -47,7 +48,7 @@ def duet():
     dummy_melody = sorted(dummy_melody, key=lambda k: k['offset'])
 
     for idx, (mel, dummy_mel) in enumerate(zip(input_melody, dummy_melody)):
-        mel['pitch'] = dummy_mel['pitch']
+        mel['pitch'] = mel['pitch'] + (random.randrange(0, 5) - 2)
 
     print('dummy_melody', dummy_melody)
 
