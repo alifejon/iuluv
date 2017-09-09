@@ -3,8 +3,9 @@
 *.mp3
 .DS_Store
 */.DS_Store
-# /w3/magnatagatune_project/mp3/*
-
+# w3/magnatagatune_project/mp3/*
+*.pyc
+midi_duet/generation_model/logs/*
 
 # OS generated files 
 .DS_Store
