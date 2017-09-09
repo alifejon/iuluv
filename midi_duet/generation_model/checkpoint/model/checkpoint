@@ -1,0 +1,6 @@
+model_checkpoint_path: "melodyRNN.model-100"
+all_model_checkpoint_paths: "melodyRNN.model-96"
+all_model_checkpoint_paths: "melodyRNN.model-97"
+all_model_checkpoint_paths: "melodyRNN.model-98"
+all_model_checkpoint_paths: "melodyRNN.model-99"
+all_model_checkpoint_paths: "melodyRNN.model-100"
