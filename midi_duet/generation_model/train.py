@@ -96,24 +96,3 @@ if __name__ == "__main__":
 
         model.train(input_sequences, label_sequences, args.num_epochs)
 
-
-
-    # def log10(x):
-    #     numerator = tf.log(x)
-    #     denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
-    #     return numerator / denominator
-
-    # self.log_enhanced_prediction = log10(1 + np.multiply(self.lstm_output_prediction,1e10))
-
-
-    # tf.summary.scalar('training loss', self.sequence_loss)
-
-    '''
-    Get summary
-    '''
-
-    # self.merged_summary = tf.summary.merge_all()
-    # self.saver = tf.train.Saver()
-    # self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
-
-

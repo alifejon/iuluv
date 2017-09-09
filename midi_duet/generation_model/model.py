@@ -57,10 +57,10 @@ class model_RNN(object):
 		multi_cells = tf.contrib.rnn.MultiRNNCell([self.create_rnn_cell()
 												   for _ in range(self.num_layers)],
 												   state_is_tuple=True)
-		multi_cells = rnn.DropoutWrapper(multi_cells, input_keep_prob=0.9, output_keep_prob=0.9)
+		self.multi_cells = rnn.DropoutWrapper(multi_cells, input_keep_prob=0.9, output_keep_prob=0.9)
 
 		# prepare initial state value
-		self.rnn_initial_state = multi_cells.zero_state(self.batch_size, tf.float32)
+		self.rnn_initial_state = self.multi_cells.zero_state(self.batch_size, tf.float32)
 
 		rnn_outputs, out_states = tf.nn.dynamic_rnn(multi_cells, self.x_one_hot, dtype=tf.float32, initial_state=self.rnn_initial_state)
 		return rnn_outputs, out_states
@@ -68,7 +68,7 @@ class model_RNN(object):
 
 	def build_model(self): 
 		
-		rnn_output, out_state = self.create_rnn()
+		rnn_output, self.out_state = self.create_rnn()
 		rnn_output_flat = tf.reshape(rnn_output, [-1, self.hidden_layer_units]) # [N x sequence_length, hidden]
 		
 		self.logits = tf.contrib.layers.fully_connected(rnn_output_flat, self.num_vocab, None)
@@ -90,7 +90,7 @@ class model_RNN(object):
 		tf.summary.scalar('training loss', sequence_loss)
 		self.merged_summary = tf.summary.merge_all()
 		
-		return opt, sequence_loss, out_state
+		return opt, sequence_loss, self.out_state
 
 
 	## save current model
@@ -200,13 +200,15 @@ class model_RNN(object):
 
 		## generate corresponding melody
 		print '[2] generating sequence from RNN'
-		# get the hidden state / logit(to get the last one as input)
 		print 'firstly, iterating through input'
+		
+		hidden_state = self.sess.run(self.multi_cells.zero_state(self.batch_size, tf.float32))
+		
 		for i in range(user_input_sequence.shape[0]):
 			print i
 			print user_input_sequence[i]
-			new_logits, prediction = self.sess.run([self.logits, self.pred], 
-								  				feed_dict={self.X: user_input_sequence[i]})
+			new_logits, prediction, hidden_state = self.sess.run([self.logits, self.pred, self.out_state], 
+								  				feed_dict={self.X: user_input_sequence[i], self.rnn_initial_state: hidden_state})
 			print new_logits
 			print prediction 
 		print(new_logits.shape)
