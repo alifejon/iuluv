@@ -178,7 +178,7 @@ class model_RNN(object):
 				# # Saving current model
 				# if np.mod(counter, 500) == 2:
 				# 	self.save(args.checkpoint_dir, counter)
-			np.savetxt('avg_loss_txt/averaged_loss_per_epoch_' + str(epoch) + '.txt', loss_per_epoch) 
+			np.savetxt('avg_loss_txt/averaged_loss_per_epoch.txt', loss_per_epoch) 
 
 
 	## generate melody from input
