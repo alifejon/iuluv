@@ -88,7 +88,7 @@ if __name__ == "__main__":
         model = model_RNN(sess, 
                          batch_size=16, 
                          learning_rate=0.001,
-                         num_layers = 2,
+                         num_layers = 3,
                          num_vocab = vocab_size,
                          hidden_layer_units = 64,
                          sequence_length = 8,

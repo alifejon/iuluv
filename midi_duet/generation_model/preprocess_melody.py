@@ -5,7 +5,6 @@ import argparse
 
 from mel_op import *
 
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()

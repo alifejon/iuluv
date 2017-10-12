@@ -9,7 +9,7 @@ class model_RNN(object):
 				 sess, 
 				 batch_size=16, 
 				 learning_rate=0.001,
-				 num_layers = 2,
+				 num_layers = 3,
 				 num_vocab = 1,
 				 hidden_layer_units = 64,
 				 sequence_length = 8,
@@ -31,14 +31,8 @@ class model_RNN(object):
 		self.X = tf.placeholder(dtype=tf.int32, shape=[None, self.sequence_length], name='input')
 		self.Y = tf.placeholder(dtype=tf.int32, shape=[None, self.sequence_length], name='label')
 		
-		# self.X_gen = tf.placeholder(dtype=tf.int32, shape=[None, 1], name='input')
-		# self.Y_gen = tf.placeholder(dtype=tf.int32, shape=[None, 1], name='input')
-		
 		self.x_one_hot = tf.one_hot(self.X, self.num_vocab)
 		self.y_one_hot = tf.one_hot(self.Y, self.num_vocab)
-
-		# self.x_gen_one_hot = tf.one_hot(self.X_gen, self.num_vocab)
-		# self.y_gen_one_hot = tf.one_hot(self.Y_gen, self.num_vocab)
 
 		self.optimizer, self.sequence_loss, self.curr_state = self.build_model()
 
@@ -78,8 +72,6 @@ class model_RNN(object):
 		pred = tf.argmax(y_softmax, axis=1)       # [N x seqlen]
 		self.pred = tf.reshape(pred, [self.batch_size, -1]) # [N, seqlen]
 
-
-
 		y_flat = tf.reshape(self.y_one_hot, [-1, self.num_vocab]) # [N x sequence_length, vocab_size]
 
 		losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_flat, logits=self.logits)
@@ -116,7 +108,10 @@ class model_RNN(object):
 		ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
 		if ckpt and ckpt.model_checkpoint_path:
 			ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-			self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+			# self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+			print(ckpt_name)
+			print(tf.train.latest_checkpoint(checkpoint_dir))
+			self.saver.restore(self.sess, tf.train.latest_checkpoint(checkpoint_dir))
 			return True
 		else:
 			return False
@@ -126,6 +121,12 @@ class model_RNN(object):
 		## initialize                         
 		init_op = tf.global_variables_initializer()
 		self.sess.run(init_op)
+
+		if self.load(self.checkpoint_dir):
+			print(" [*] Load SUCCESS")
+		else:
+			print(" [!] Load failed...")
+			return
 		
 		counter = 0
 		start_time = time.time()
@@ -178,7 +179,7 @@ class model_RNN(object):
 				# # Saving current model
 				# if np.mod(counter, 500) == 2:
 				# 	self.save(args.checkpoint_dir, counter)
-			np.savetxt('avg_loss_txt/averaged_loss_per_epoch.txt', loss_per_epoch) 
+			np.savetxt('avg_loss_txt/averaged_loss_per_epoch_' + str(epoch) + '.txt', loss_per_epoch) 
 
 
 	## generate melody from input
@@ -220,7 +221,6 @@ class model_RNN(object):
 			generated_input_seq.append(np.argmax(one_hot))
 		generated_input_seq = np.expand_dims(np.array(generated_input_seq), axis=0)
 
-	
 		## generate melody 
 		generated_melody = []
 		generated_melody_length = 0
@@ -249,14 +249,6 @@ class model_RNN(object):
 
 		print(np.array(generated_melody).shape)
 		
-		# generated_output_seq = []
-		
-		# for one_hot in generated_logits[0]:
-		# 	generated_output_seq.append(np.argmax(one_hot))
-		# generated_output_seq = np.expand_dims(np.array(generated_output_seq), axis=0)
-		
-		# return generated_output_seq
-
 		return generated_melody
 
 

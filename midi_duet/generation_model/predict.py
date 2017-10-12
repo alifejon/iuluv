@@ -17,9 +17,60 @@ parser.add_argument('--checkpoint_dir', dest='checkpoint_dir', default='./checkp
 
 args = parser.parse_args()
 
+## prepare as an batch
+def get_input_batch_sequence(input_seq, sequence_length):
+    
+    input_sequence_batches = []
+
+    num_seqs_per_song = max(int((len(input_seq) / sequence_length)) - 1, 0)
+
+    for ns in range(num_seqs_per_song):
+        batch = np.expand_dims(input_seq[ns * sequence_length:(ns+1) * sequence_length], axis=0)
+        input_sequence_batches.append(batch)
+
+    return np.array(input_sequence_batches)
+
+
+def preprocess_user_input(mel_arr):
+    curve_seq_list = []
+    curve_seq_list.append(create_curve_seq(mel_arr))
+    print(len(curve_seq_list))
+
+    return curve_seq_list
+
+
+def predict_output(curve_arr, sequence_length = 8):
+
+    ## prepare user input sequence with existing vocab in melody set
+    user_input_sequence = []
+    for curve in curve_arr:
+        similar_curve = find_similar_curve(curve, mel_set)
+        user_input_sequence.append(similar_curve)
+
+    print(user_input_sequence)
+    
+    ## pad zeros to the user input sequence
+    if len(user_input_sequence) < sequence_length:
+        user_input_sequence += [0] * (sequence_length - len(user_input_file))
+
+    input_sequence_as_batches = get_input_batch_sequence(user_input_sequence, sequence_length)
+
+    with tf.Session() as sess:
+        model = model_RNN(sess, 
+                         batch_size=1, 
+                         learning_rate=0.001,
+                         num_layers = 3,
+                         num_vocab = vocab_size,
+                         hidden_layer_units = 64,
+                         sequence_length = 8,
+                         data_dir='preprocessed_data/')
+
+    output_sequence = model.predict(np.array(input_sequence_as_batches), mel_i_v)
+
+    return output_sequence
+
 
 if __name__ == "__main__":
-
 
     sequence_length = 8
 
@@ -46,47 +97,7 @@ if __name__ == "__main__":
         mel_arr.append(mel_data[key])
     
     curve_arr = create_curve_seq(mel_arr)
-
-    ## prepare user input sequence with existing vocab in melody set
-    user_input_sequence = []
-    for curve in curve_arr:
-        similar_curve = find_similar_curve(curve, mel_set)
-        user_input_sequence.append(similar_curve)
-
-    print(user_input_sequence)
-    
-    ## pad zeros to the user input sequence
-    if len(user_input_sequence) < sequence_length:
-        temp_list = np.zeros(sequence_length)
-        user_input_sequence += [0] * (sequence_length - len(user_input_file))
-
-    ## prepare as an batch
-    def get_input_batch_sequence(input_seq, sequence_length):
-        
-        input_sequence_batches = []
-
-        num_seqs_per_song = max(int((len(input_seq) / sequence_length)) - 1, 0)
-
-        for ns in range(num_seqs_per_song):
-            batch = np.expand_dims(input_seq[ns * sequence_length:(ns+1) * sequence_length], axis=0)
-            input_sequence_batches.append(batch)
-
-        return np.array(input_sequence_batches)
-
-    input_sequence_as_batches = get_input_batch_sequence(user_input_sequence, sequence_length)
-
-
-    with tf.Session() as sess:
-        model = model_RNN(sess, 
-                         batch_size=1, 
-                         learning_rate=0.001,
-                         num_layers = 2,
-                         num_vocab = vocab_size,
-                         hidden_layer_units = 64,
-                         sequence_length = 8,
-                         data_dir='preprocessed_data/')
-
-    output_sequence = model.predict(np.array(input_sequence_as_batches), mel_i_v)
+    output_sequence = predict_output(curve_arr, sequence_length)
 
     print(output_sequence)
 
