@@ -197,24 +197,24 @@ class model_RNN(object):
 			return
 
 		## prepare input sequence
-		print '[1] preparing user input data' # done at prdeict.py
+		print('[1] preparing user input data') # done at prdeict.py
 
 		## generate corresponding melody
-		print '[2] generating sequence from RNN'
-		print 'firstly, iterating through input'
+		print('[2] generating sequence from RNN')
+		print('firstly, iterating through input')
 		
 		hidden_state = self.sess.run(self.multi_cells.zero_state(self.batch_size, tf.float32))
 		
 		for i in range(user_input_sequence.shape[0]):
-			print i
-			print user_input_sequence[i]
+			print(i)
+			print(user_input_sequence[i])
 			new_logits, prediction, hidden_state = self.sess.run([self.logits, self.pred, self.out_state], 
 								  				feed_dict={self.X: user_input_sequence[i], self.rnn_initial_state: hidden_state})
-			print new_logits
-			print prediction 
+			print(new_logits)
+			print(prediction)
 		print(new_logits.shape)
 
-		print 'secondly, generating'
+		print('secondly, generating')
 		generated_input_seq = []
 
 		for one_hot in new_logits:

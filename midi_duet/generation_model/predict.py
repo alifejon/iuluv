@@ -93,7 +93,7 @@ if __name__ == "__main__":
     midi_obj = music21.converter.parse(user_input_file)
     mel_data = create_mel_data_each_file(midi_obj)
     mel_arr = []
-    for key in sorted(mel_data.iterkeys()):
+    for key in sorted(mel_data.keys()):
         mel_arr.append(mel_data[key])
     
     curve_arr = create_curve_seq(mel_arr)
