@@ -3,7 +3,7 @@ import os
 import pickle
 import argparse
 
-from mel_op import *
+from generation_model.mel_op import *
 
 if __name__ == "__main__":
 

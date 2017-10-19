@@ -4,7 +4,7 @@ from flask import send_from_directory, request, jsonify
 from flask_cors import CORS
 import os
 
-from common.melody import Melody
+from web_server.common.melody import Melody
 import time
 import random
 
@@ -41,7 +41,8 @@ def duet():
     now = time.time()
     input_melody = json.loads(request.data)
 
-    char_rnn_melody = Melody.createCharRNNSequence(input_melody)
+    # char_rnn_melody = Melody.createCharRNNSequence(input_melody)
+    char_rnn_melody = Melody.createCharGenerationSequence(input_melody)
 
     return jsonify(char_rnn_melody)
     # return jsonify(dummy_melody)

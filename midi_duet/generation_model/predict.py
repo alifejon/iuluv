@@ -4,8 +4,8 @@ import tensorflow as tf
 import pickle
 import numpy as np
 
-from model import model_RNN
-from mel_op import *
+from generation_model.model import model_RNN
+from generation_model.mel_op import *
 
 
 parser = argparse.ArgumentParser(description='')
@@ -51,7 +51,7 @@ def predict_output(curve_arr, sequence_length = 8):
     
     ## pad zeros to the user input sequence
     if len(user_input_sequence) < sequence_length:
-        user_input_sequence += [0] * (sequence_length - len(user_input_file))
+        user_input_sequence += [0] * (sequence_length - len(user_input_sequence))
 
     input_sequence_as_batches = get_input_batch_sequence(user_input_sequence, sequence_length)
 
@@ -63,7 +63,7 @@ def predict_output(curve_arr, sequence_length = 8):
                          num_vocab = vocab_size,
                          hidden_layer_units = 64,
                          sequence_length = 8,
-                         data_dir='preprocessed_data/')
+                         data_dir='generation_model/preprocessed_data/')
 
     output_sequence = model.predict(np.array(input_sequence_as_batches), mel_i_v)
 

@@ -4,7 +4,7 @@ import tensorflow as tf
 import pickle
 import numpy as np
 
-from model import model_RNN
+from generation_model.model import model_RNN
 
 parser = argparse.ArgumentParser(description='')
 
