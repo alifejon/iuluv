@@ -8,8 +8,15 @@ from web_server.common.melody import Melody
 import time
 import random
 
+from flask_socketio import SocketIO, emit
+
 app = Flask(__name__, static_url_path='/static')
-CORS(app)
+app.secret_key = "secret"
+# CORS(app)
+socketio = SocketIO(app)
+
+user_no = 1
+
 
 @app.route('/js/<path:path>')
 def send_js(path):
@@ -23,6 +30,11 @@ def send_images(path):
 @app.route('/')
 def root():
     return app.send_static_file('index.html')
+
+@app.route('/recv_test')
+def recv_test():
+    return app.send_static_file('receiver.html')
+
 
 @app.route('/duet', methods=['POST'])
 def duet():
@@ -41,11 +53,35 @@ def duet():
     now = time.time()
     input_melody = json.loads(request.data)
 
-    # char_rnn_melody = Melody.createCharRNNSequence(input_melody)
-    char_rnn_melody = Melody.createCharGenerationSequence(input_melody)
+    char_rnn_melody = Melody.createCharRNNSequence(input_melody)
+    # char_rnn_melody = Melody.createCharGenerationSequence(input_melody)
 
     return jsonify(char_rnn_melody)
     # return jsonify(dummy_melody)
 
+@app.route('/event', methods=['POST'])
+def event():
+    input_melody = json.loads(request.data)
+    emit('started', input_melody, broadcast=True, namespace='/visual')
+
+@socketio.on('connect', namespace='/visual')
+def connect():
+    print('connected!')
+
+@socketio.on('start', namespace='/visual')
+def connect(d):
+    print('start', d);
+    emit('started', d, broadcast=True)
+
+@socketio.on('disconnect', namespace='/visual')
+def disconnect():
+    print("Disconnected")
+
+@socketio.on('music_signal', namespace='/visual')
+def receiveSignal(signal):
+    print('music_signal', signal)
+    emit('music_signal', signal, broadcast=True)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # app.run(debug=True, host='0.0.0.0')
+    socketio.run(app, debug=True, host='0.0.0.0')

@@ -15,3 +15,5 @@ midi_duet/generation_model/logs/*
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.local
+*.local
