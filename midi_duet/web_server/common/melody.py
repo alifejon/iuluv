@@ -47,15 +47,15 @@ print(data_dir)
 with open(data_dir + "mel_data.p", "rb") as fp:
     data = pickle.load(fp)
 mel_set, mel_v_i, mel_i_v, vocab_size = (data[i] for i in range(len(data)))
-with tf.Session() as sess:
-    model = model_RNN(sess,
-          batch_size=1,
-          learning_rate=0.001,
-          num_layers=3,
-          num_vocab=vocab_size,
-          hidden_layer_units=64,
-          sequence_length=8,
-          data_dir='generation_mode/preprocessed_data/')
+# with tf.Session() as sess:
+#     model = model_RNN(sess,
+#           batch_size=1,
+#           learning_rate=0.001,
+#           num_layers=3,
+#           num_vocab=vocab_size,
+#           hidden_layer_units=64,
+#           sequence_length=8,
+#           data_dir='generation_mode/preprocessed_data/')
 
 class Melody:
     def __init__(self, pitch=0, duration=0, offset=0, velocity=0):

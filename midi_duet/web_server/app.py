@@ -18,6 +18,26 @@ socketio = SocketIO(app)
 user_no = 1
 
 
+@app.route('/img/<path:path>')
+def send_img(path):
+    print(path)
+    return app.send_static_file(os.path.join('img', path))
+
+@app.route('/sounds/<path:path>')
+def send_sounds(path):
+    print(path)
+    return app.send_static_file(os.path.join('sounds', path))
+
+@app.route('/styles/<path:path>')
+def send_styles(path):
+    print(path)
+    return app.send_static_file(os.path.join('styles', path))
+
+@app.route('/webcomponents/<path:path>')
+def send_webcomponents(path):
+    print(path)
+    return app.send_static_file(os.path.join('webcomponents', path))
+
 @app.route('/js/<path:path>')
 def send_js(path):
     print(path)
@@ -34,7 +54,6 @@ def root():
 @app.route('/recv_test')
 def recv_test():
     return app.send_static_file('receiver.html')
-
 
 @app.route('/duet', methods=['POST'])
 def duet():
