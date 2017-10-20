@@ -72,8 +72,8 @@ def duet():
     now = time.time()
     input_melody = json.loads(request.data)
 
-    char_rnn_melody = Melody.createCharRNNSequence(input_melody)
-    # char_rnn_melody = Melody.createCharGenerationSequence(input_melody)
+    # char_rnn_melody = Melody.createCharRNNSequence(input_melody)
+    char_rnn_melody = Melody.createCharGenerationSequence(input_melody)
 
     return jsonify(char_rnn_melody)
     # return jsonify(dummy_melody)

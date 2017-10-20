@@ -1,9 +1,23 @@
 function noteOn( note, velocity ) {
-	console.log("note on: " + note, velocity);
+  console.log("note on: " + note, velocity);
+  var noteData = {
+    note: note,
+    frequency: note2Frequency(note),
+    velocity: velocity
+  };
+  console.log(noteData);
+  keyNoteOn(noteData);
 }
 
 function noteOff( note ) {
   console.log("note off: " + note);
+  var noteData = {
+    note: note,
+    frequency: note2Frequency(note),
+    velocity: 1
+  }
+  console.log(noteData);
+  keyNoteOff(noteData);
 }
 
 

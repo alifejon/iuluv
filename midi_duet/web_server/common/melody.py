@@ -21,7 +21,6 @@ prime = 'GGAAGGEGG'
 # with open(os.path.join(save_dir, 'chars_vocab.pkl'), 'rb') as f:
 #     chars, vocab = cPickle.load(f)
 # model = Model(saved_args, training=False)
-#
 # sess = tf.Session()
 # sess.as_default()
 # tf.global_variables_initializer().run(session=sess)
@@ -47,15 +46,19 @@ print(data_dir)
 with open(data_dir + "mel_data.p", "rb") as fp:
     data = pickle.load(fp)
 mel_set, mel_v_i, mel_i_v, vocab_size = (data[i] for i in range(len(data)))
+
+sess = tf.Session()
+sess.as_default()
 # with tf.Session() as sess:
-#     model = model_RNN(sess,
-#           batch_size=1,
-#           learning_rate=0.001,
-#           num_layers=3,
-#           num_vocab=vocab_size,
-#           hidden_layer_units=64,
-#           sequence_length=8,
-#           data_dir='generation_mode/preprocessed_data/')
+# model = model_RNN(sess,
+#       batch_size=1,
+#       learning_rate=0.001,
+#       num_layers=3,
+#       num_vocab=vocab_size,
+#       hidden_layer_units=64,
+#       sequence_length=8,
+#       data_dir='generation_mode/preprocessed_data/',
+#       checkpoint_dir='generation_model/checkpoint/')
 
 class Melody:
     def __init__(self, pitch=0, duration=0, offset=0, velocity=0):
@@ -124,15 +127,27 @@ class Melody:
             ## pad zeros to the user input sequence
             if len(user_input_sequence) < sequence_length:
                 user_input_sequence += [0] * (sequence_length - len(user_input_sequence))
+                # user_input_sequence += user_input_sequence + user_input_sequence
 
             input_sequence_as_batches = get_input_batch_sequence(user_input_sequence, sequence_length)
 
+            with tf.Session() as sess:
+                model = model_RNN(sess,
+                                  batch_size=1,
+                                  learning_rate=0.001,
+                                  num_layers=3,
+                                  num_vocab=vocab_size,
+                                  hidden_layer_units=64,
+                                  sequence_length=8,
+                                  data_dir='generation_model/preprocessed_data/',
+                                  checkpoint_dir='generation_model/checkpoint/')
 
 
             output_sequence = model.predict(np.array(input_sequence_as_batches), mel_i_v)
 
-            return output_sequence
+            print('output_sequence', output_sequence)
 
+            return output_sequence
 
         print(input_melody)
         curve_arr = create_curve_seq(input_melody)

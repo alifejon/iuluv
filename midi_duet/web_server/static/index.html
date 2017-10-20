@@ -5,8 +5,8 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
 
     <script src="js/platform.js"></script>
-    <script type="text/javascript" src="js/midi.js"></script>
-    <!-- <script type="text/javascript" src="js/waveshaper.js"></script>
+    <!-- <script type="text/javascript" src="js/midi.js"></script>
+    <script type="text/javascript" src="js/waveshaper.js"></script>
     <script type="text/javascript" src="js/synth.js"></script> -->
 
     <style>
@@ -262,7 +262,8 @@
         }
       };
 
-      keyboard.down( function(note) {
+      var keyNoteOn = function(note) {
+        console.log(note);
         var o = context.createOscillator();
         var g = context.createGain();
         o.frequency.value = note.frequency;
@@ -293,9 +294,9 @@
         emitToSocket(eventData);
 
         clearTimer();
-      });
+      }; 
 
-      keyboard.up( function(note) {
+      var keyNoteOff = function(note) {
         if(oscillators[note.note]) {
           oscillators[note.note].gain.gain.linearRampToValueAtTime(oscillators[note.note].gain.gain.value, context.currentTime);
           oscillators[note.note].gain.gain.linearRampToValueAtTime(0, context.currentTime + 0.1);
@@ -336,7 +337,123 @@
           }, MELODY_INTERVAL_SEC * 1000);
           timeOutList.push(tOut);  
         }
+      };
+
+      keyboard.down( function(note) {
+        keyNoteOn(note);
       });
+
+      keyboard.up( function(note) {
+        keyNoteOff(note);
+      });
+
+      function noteOn( note, velocity ) {
+        var noteData = {
+          note: note,
+          frequency: note2Frequency(note),
+          velocity: 127,
+          isActive: true
+        };
+        keyNoteOn(noteData);
+      }
+
+      function noteOff( note ) {
+        var noteData = {
+          note: note,
+          frequency: note2Frequency(note),
+          velocity: 127,
+          isActive: true
+        };
+        keyNoteOff(noteData);
+      }
+
+      function midiMessageReceived( ev ) {
+        var cmd = ev.data[0] >> 4;
+        var channel = ev.data[0] & 0xf;
+        var noteNumber = ev.data[1];
+        var velocity = ev.data[2];
+
+        if (channel == 9)
+          return
+        if ( cmd==8 || ((cmd==9)&&(velocity==0)) ) { // with MIDI, note on with velocity zero is the same as note off
+          // note off
+          noteOff( noteNumber );
+        } else if (cmd == 9) {
+          // note on
+          noteOn( noteNumber, velocity/127.0);
+        } 
+      }
+
+      var selectMIDI = null;
+      var midiAccess = null;
+      var midiIn = null;
+
+      function selectMIDIIn( ev ) {
+        if (midiIn)
+          midiIn.onmidimessage = null;
+        var id = ev.target[ev.target.selectedIndex].value;
+        if ((typeof(midiAccess.inputs) == "function"))   //Old Skool MIDI inputs() code
+          midiIn = midiAccess.inputs()[ev.target.selectedIndex];
+        else
+          midiIn = midiAccess.inputs.get(id);
+        if (midiIn)
+          midiIn.onmidimessage = midiMessageReceived;
+      }
+
+      function populateMIDIInSelect() {
+        // clear the MIDI input select
+        // selectMIDI.options.length = 0;
+        if (midiIn && midiIn.state=="disconnected")
+          midiIn=null;
+        var firstInput = null;
+
+        var inputs=midiAccess.inputs.values();
+        for ( var input = inputs.next(); input && !input.done; input = inputs.next()){
+          input = input.value;
+          if (!firstInput)
+            firstInput=input;
+          var str=input.name.toString();
+          var preferred = !midiIn && ((str.indexOf("MPK") != -1)||(str.indexOf("Keyboard") != -1)||(str.indexOf("keyboard") != -1)||(str.indexOf("KEYBOARD") != -1));
+
+          // if we're rebuilding the list, but we already had this port open, reselect it.
+          if (midiIn && midiIn==input)
+            preferred = true;
+
+          // selectMIDI.appendChild(new Option(input.name,input.id,preferred,preferred));
+          if (preferred) {
+            midiIn = input;
+            midiIn.onmidimessage = midiMessageReceived;
+          }
+        }
+        if (!midiIn) {
+            midiIn = firstInput;
+            if (midiIn)
+              midiIn.onmidimessage = midiMessageReceived;
+        }
+      }
+
+      function midiConnectionStateChange( e ) {
+        console.log("connection: " + e.port.name + " " + e.port.connection + " " + e.port.state );
+        populateMIDIInSelect();
+      }
+
+      function onMIDIStarted( midi ) {
+        var preferredIndex = 0;
+
+        midiAccess = midi;
+
+        // document.getElementById("synthbox").className = "loaded";
+        // selectMIDI=document.getElementById("midiIn");
+        midi.onstatechange = midiConnectionStateChange;
+        populateMIDIInSelect();
+        // selectMIDI.onchange = selectMIDIIn;
+      }
+
+      function onMIDISystemError( err ) {
+        document.getElementById("synthbox").className = "error";
+        console.log( "MIDI not initialized - error encountered:" + err.code );
+      }
+
     </script>
   </body>
 </html>

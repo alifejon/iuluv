@@ -14,7 +14,7 @@ class model_RNN(object):
 				 hidden_layer_units = 64,
 				 sequence_length = 8,
 				 data_dir='preprocessed_data/',
-				 checkpoint_dir='checkpoint/', 
+				 checkpoint_dir='checkpoint/',
 				 sample_dir=None):
 
 		self.sess = sess
@@ -126,7 +126,6 @@ class model_RNN(object):
 			print(" [*] Load SUCCESS")
 		else:
 			print(" [!] Load failed...")
-			return
 		
 		counter = 0
 		start_time = time.time()
