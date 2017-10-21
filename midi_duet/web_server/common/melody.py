@@ -105,7 +105,7 @@ class Melody:
 
         input_melody_parsed = []
 
-        for i in range(1, len(input_melody['offset'])):
+        for i in range(1, len(input_melody)):
             if offset_in_a_measure[i] > offset_in_a_measure[i-1]:
                 tmp_dict = dict()
                 tmp_dict['note'] = input_melody[i]['note']
