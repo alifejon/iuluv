@@ -4,8 +4,8 @@ import tensorflow as tf
 import pickle
 import numpy as np
 
-from generation_model.model import model_RNN
-from generation_model.mel_op import *
+from model import model_RNN
+from mel_op import *
 
 
 parser = argparse.ArgumentParser(description='')
