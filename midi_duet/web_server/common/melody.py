@@ -176,6 +176,8 @@ class Melody:
             curr_note_info = dict()
             curr_note_info['pitch'] = curr_note + vec[0]
             curr_note_info['offset'] = curr_offset + vec[1]
+            curr_note_info['duration'] = 0.25
+            curr_note_info['velocity'] = 120
 
             output_note_sequence.append(curr_note_info)
 
