@@ -3,7 +3,7 @@ import random
 import tensorflow as tf
 import os
 from six.moves import cPickle
-from web_server.common.model import Model
+from web_server.common.model_bk import Model
 from six import text_type
 import math
 
