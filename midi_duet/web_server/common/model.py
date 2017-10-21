@@ -1,125 +1,255 @@
 import tensorflow as tf
 from tensorflow.contrib import rnn
-from tensorflow.contrib import legacy_seq2seq
-
 import numpy as np
+import time, os
 
 
-class Model():
-    def __init__(self, args, training=True):
-        self.args = args
-        if not training:
-            args.batch_size = 1
-            args.seq_length = 1
+class model_RNN(object):
+	def __init__(self, 
+				 sess, 
+				 batch_size=16, 
+				 learning_rate=0.001,
+				 num_layers = 3,
+				 num_vocab = 1,
+				 hidden_layer_units = 64,
+				 sequence_length = 8,
+				 data_dir='preprocessed_data/',
+				 checkpoint_dir='checkpoint/',
+				 sample_dir=None):
 
-        if args.model == 'rnn':
-            cell_fn = rnn.BasicRNNCell
-        elif args.model == 'gru':
-            cell_fn = rnn.GRUCell
-        elif args.model == 'lstm':
-            cell_fn = rnn.BasicLSTMCell
-        elif args.model == 'nas':
-            cell_fn = rnn.NASCell
-        else:
-            raise Exception("model type not supported: {}".format(args.model))
+		self.sess = sess
+		self.batch_size = batch_size
+		self.learning_rate = learning_rate
+		self.num_layers = num_layers
+		self.hidden_layer_units = hidden_layer_units
+		self.num_vocab = num_vocab
+		self.sequence_length = sequence_length
+		self.data_dir = data_dir
+		self.checkpoint_dir = checkpoint_dir
 
-        cells = []
-        for _ in range(args.num_layers):
-            cell = cell_fn(args.rnn_size)
-            if training and (args.output_keep_prob < 1.0 or args.input_keep_prob < 1.0):
-                cell = rnn.DropoutWrapper(cell,
-                                          input_keep_prob=args.input_keep_prob,
-                                          output_keep_prob=args.output_keep_prob)
-            cells.append(cell)
+		# input place holders
+		self.X = tf.placeholder(dtype=tf.int32, shape=[None, self.sequence_length], name='input')
+		self.Y = tf.placeholder(dtype=tf.int32, shape=[None, self.sequence_length], name='label')
+		
+		self.x_one_hot = tf.one_hot(self.X, self.num_vocab)
+		self.y_one_hot = tf.one_hot(self.Y, self.num_vocab)
 
-        self.cell = cell = rnn.MultiRNNCell(cells, state_is_tuple=True)
+		self.optimizer, self.sequence_loss, self.curr_state = self.build_model()
 
-        self.input_data = tf.placeholder(
-            tf.int32, [args.batch_size, args.seq_length])
-        self.targets = tf.placeholder(
-            tf.int32, [args.batch_size, args.seq_length])
-        self.initial_state = cell.zero_state(args.batch_size, tf.float32)
-
-        with tf.variable_scope('rnnlm'):
-            softmax_w = tf.get_variable("softmax_w",
-                                        [args.rnn_size, args.vocab_size])
-            softmax_b = tf.get_variable("softmax_b", [args.vocab_size])
-
-        embedding = tf.get_variable("embedding", [args.vocab_size, args.rnn_size])
-        inputs = tf.nn.embedding_lookup(embedding, self.input_data)
-
-        # dropout beta testing: double check which one should affect next line
-        if training and args.output_keep_prob:
-            inputs = tf.nn.dropout(inputs, args.output_keep_prob)
-
-        inputs = tf.split(inputs, args.seq_length, 1)
-        inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
-
-        def loop(prev, _):
-            prev = tf.matmul(prev, softmax_w) + softmax_b
-            prev_symbol = tf.stop_gradient(tf.argmax(prev, 1))
-            return tf.nn.embedding_lookup(embedding, prev_symbol)
-
-        outputs, last_state = legacy_seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if not training else None, scope='rnnlm')
-        output = tf.reshape(tf.concat(outputs, 1), [-1, args.rnn_size])
+		self.saver = tf.train.Saver()
+		self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
 
-        self.logits = tf.matmul(output, softmax_w) + softmax_b
-        self.probs = tf.nn.softmax(self.logits)
-        loss = legacy_seq2seq.sequence_loss_by_example(
-                [self.logits],
-                [tf.reshape(self.targets, [-1])],
-                [tf.ones([args.batch_size * args.seq_length])])
-        self.cost = tf.reduce_sum(loss) / args.batch_size / args.seq_length
-        with tf.name_scope('cost'):
-            self.cost = tf.reduce_sum(loss) / args.batch_size / args.seq_length
-        self.final_state = last_state
-        self.lr = tf.Variable(0.0, trainable=False)
-        tvars = tf.trainable_variables()
-        grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars),
-                args.grad_clip)
-        with tf.name_scope('optimizer'):
-            optimizer = tf.train.AdamOptimizer(self.lr)
-        self.train_op = optimizer.apply_gradients(zip(grads, tvars))
+	def create_rnn_cell(self):
+		cell = tf.contrib.rnn.BasicLSTMCell(num_units = self.hidden_layer_units,
+											state_is_tuple = True)
+		return cell
 
-        # instrument tensorboard
-        tf.summary.histogram('logits', self.logits)
-        tf.summary.histogram('loss', loss)
-        tf.summary.scalar('train_loss', self.cost)
 
-    def sample(self, sess, chars, vocab, num=200, prime='The ', sampling_type=1):
-        state = sess.run(self.cell.zero_state(1, tf.float32))
-        for char in prime[:-1]:
-            x = np.zeros((1, 1))
-            x[0, 0] = vocab[char]
-            feed = {self.input_data: x, self.initial_state: state}
-            [state] = sess.run([self.final_state], feed)
+	def create_rnn(self):
+		
+		multi_cells = tf.contrib.rnn.MultiRNNCell([self.create_rnn_cell()
+												   for _ in range(self.num_layers)],
+												   state_is_tuple=True)
+		self.multi_cells = rnn.DropoutWrapper(multi_cells, input_keep_prob=0.9, output_keep_prob=0.9)
 
-        def weighted_pick(weights):
-            t = np.cumsum(weights)
-            s = np.sum(weights)
-            return(int(np.searchsorted(t, np.random.rand(1)*s)))
+		# prepare initial state value
+		self.rnn_initial_state = self.multi_cells.zero_state(self.batch_size, tf.float32)
 
-        ret = prime
-        char = prime[-1]
-        for n in range(num):
-            x = np.zeros((1, 1))
-            x[0, 0] = vocab[char]
-            feed = {self.input_data: x, self.initial_state: state}
-            [probs, state] = sess.run([self.probs, self.final_state], feed)
-            p = probs[0]
+		rnn_outputs, out_states = tf.nn.dynamic_rnn(multi_cells, self.x_one_hot, dtype=tf.float32, initial_state=self.rnn_initial_state)
+		return rnn_outputs, out_states
 
-            if sampling_type == 0:
-                sample = np.argmax(p)
-            elif sampling_type == 2:
-                if char == ' ':
-                    sample = weighted_pick(p)
-                else:
-                    sample = np.argmax(p)
-            else:  # sampling_type == 1 default:
-                sample = weighted_pick(p)
 
-            pred = chars[sample]
-            ret += pred
-            char = pred
-        return ret
+	def build_model(self): 
+		
+		rnn_output, self.out_state = self.create_rnn()
+		rnn_output_flat = tf.reshape(rnn_output, [-1, self.hidden_layer_units]) # [N x sequence_length, hidden]
+		
+		self.logits = tf.contrib.layers.fully_connected(rnn_output_flat, self.num_vocab, None)
+
+		# for generation 
+		y_softmax = tf.nn.softmax(self.logits)         # [N x seqlen, vocab_size]
+		pred = tf.argmax(y_softmax, axis=1)       # [N x seqlen]
+		self.pred = tf.reshape(pred, [self.batch_size, -1]) # [N, seqlen]
+
+		y_flat = tf.reshape(self.y_one_hot, [-1, self.num_vocab]) # [N x sequence_length, vocab_size]
+
+		losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_flat, logits=self.logits)
+		sequence_loss = tf.reduce_mean(losses)
+
+		opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(sequence_loss)
+
+		tf.summary.scalar('training loss', sequence_loss)
+		self.merged_summary = tf.summary.merge_all()
+		
+		return opt, sequence_loss, self.out_state
+
+
+	## save current model
+	def save_model(self, checkpoint_dir, step): 
+		model_name = "melodyRNN.model"
+		model_dir = "model"
+		checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+
+		if not os.path.exists(checkpoint_dir):
+			os.makedirs(checkpoint_dir)
+
+		self.saver.save(self.sess,
+						os.path.join(checkpoint_dir, model_name),
+						global_step=step)
+
+	## load saved model
+	def load(self, checkpoint_dir):   
+		print(" [*] Reading checkpoint...")
+
+		model_dir = "model"
+		checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+
+		ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+		if ckpt and ckpt.model_checkpoint_path:
+			ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+			# self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+			print(ckpt_name)
+			print(tf.train.latest_checkpoint(checkpoint_dir))
+			self.saver.restore(self.sess, tf.train.latest_checkpoint(checkpoint_dir))
+			return True
+		else:
+			return False
+
+	def train(self, input_sequences, label_sequences, num_epochs): 
+
+		## initialize                         
+		init_op = tf.global_variables_initializer()
+		self.sess.run(init_op)
+
+		if self.load(self.checkpoint_dir):
+			print(" [*] Load SUCCESS")
+		else:
+			print(" [!] Load failed...")
+		
+		counter = 0
+		start_time = time.time()
+
+		## loading model 
+		if self.load(self.checkpoint_dir):
+			print(" [*] Load SUCCESS")
+		else:
+			print(" [!] Load failed...")
+
+		num_all_sequences = input_sequences.shape[0]
+		num_batches = int(num_all_sequences / self.batch_size)
+
+		loss_per_epoch = []
+		## training loop
+		for epoch in range(num_epochs):
+			for batch_idx in range(num_batches):
+				start_time = time.time()
+				losses_per_epoch = []
+			
+				_, loss, logits, curr_state, summary_str = self.sess.run([self.optimizer, 
+															 self.sequence_loss, 
+															 self.logits, 
+															 self.curr_state,
+															 self.merged_summary], 
+							  feed_dict={
+								self.X: input_sequences[batch_idx * self.batch_size:(batch_idx+1)*self.batch_size], 
+								self.Y: label_sequences[batch_idx * self.batch_size:(batch_idx+1)*self.batch_size] 
+								})
+
+				self.writer.add_summary(summary_str, epoch)
+
+				print("Epoch: [%2d] [%4d/%4d] time: %4.4f, loss: %.8f" \
+					% (epoch, batch_idx, num_batches,
+						time.time() - start_time,
+						loss))
+				losses_per_epoch.append(loss)
+			loss_per_epoch.append(np.mean(np.array(losses_per_epoch)))
+			
+			counter += 1
+
+			# if np.mod(counter, 10) == 1:
+			self.save_model(self.checkpoint_dir, counter)
+
+				# # Get sample 
+				# if np.mod(counter, 200) == 1:
+				# 	self.get_sample(epoch, idx, 'train')
+				# 	self.get_sample( epoch, idx, 'val')
+
+				# # Saving current model
+				# if np.mod(counter, 500) == 2:
+				# 	self.save(args.checkpoint_dir, counter)
+			np.savetxt('avg_loss_txt/averaged_loss_per_epoch_' + str(epoch) + '.txt', loss_per_epoch) 
+
+
+	## generate melody from input
+	def predict(self, user_input_sequence, mel_i_v):
+		self.predict_opt = True
+		print("User input : ", user_input_sequence.shape)
+
+		init_op = tf.global_variables_initializer()
+		self.sess.run(init_op)
+
+		if self.load(self.checkpoint_dir):
+			print(" [*] Load SUCCESS")
+		else:
+			print(" [!] Load failed...")
+			return
+
+		## prepare input sequence
+		print('[1] preparing user input data') # done at prdeict.py
+
+		## generate corresponding melody
+		print('[2] generating sequence from RNN')
+		print('firstly, iterating through input')
+		
+		hidden_state = self.sess.run(self.multi_cells.zero_state(self.batch_size, tf.float32))
+		
+		for i in range(user_input_sequence.shape[0]):
+			print(i)
+			print(user_input_sequence[i])
+			new_logits, prediction, hidden_state = self.sess.run([self.logits, self.pred, self.out_state], 
+								  				feed_dict={self.X: user_input_sequence[i], self.rnn_initial_state: hidden_state})
+			print(new_logits)
+			print(prediction)
+		print(new_logits.shape)
+
+		print('secondly, generating')
+		generated_input_seq = []
+
+		for one_hot in new_logits:
+			generated_input_seq.append(np.argmax(one_hot))
+		generated_input_seq = np.expand_dims(np.array(generated_input_seq), axis=0)
+
+		## generate melody 
+		generated_melody = []
+		generated_melody_length = 0
+
+		while(generated_melody_length < 4):
+
+			generated_pred = self.sess.run([self.pred], 
+							  				feed_dict={self.X: generated_input_seq})
+			for p in generated_pred[0][0]:
+				curr_curve = mel_i_v[p]
+				generated_melody_length += curr_curve[1]
+				if generated_melody_length > 4:
+					break
+				else:
+					generated_melody.append(curr_curve)
+					generated_input_seq = generated_pred[-1]
+
+
+		# generated_logits = []
+		# predicate = lambda x: len(x) < self.sequence_length
+		# while(predicate(generated_logits)):
+		# 	generated_input_seq, curr_state = self.sess.run([self.logits, self.curr_state], 
+		# 						  				feed_dict={self.X: generated_input_seq,
+		# 						  						   self.rnn_initial_state: curr_state})
+		# 	generated_logits.append(generated_input_seq[-1])
+
+		print(np.array(generated_melody).shape)
+		
+		return generated_melody
+
+
+
+

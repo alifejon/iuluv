@@ -8,8 +8,10 @@ from six import text_type
 import math
 
 import pickle
-from generation_model.model import model_RNN
-from generation_model.mel_op import *
+# from generation_model.model import model_RNN
+# from generation_model.mel_op import *
+from model import model_RNN
+from mel_op import *
 
 save_dir = 'web_server/save'
 sample = 10
