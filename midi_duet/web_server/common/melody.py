@@ -94,7 +94,7 @@ class Melody:
     def createCharGenerationSequence(cls, input_melody, measureInSec=None, elementsPerMeasure=None):
         # add note vlaue
         input_melody_parsed = []
-        _offset = input_melody['offset'][0]
+        _offset = input_melody[0]['offset']
         
         for x in input_melody:
             x['note'] = x['pitch']
@@ -174,7 +174,7 @@ class Melody:
 
         for vec in output_sequence:
             curr_note_info = dict()
-            curr_note_info['pitch'] = curr_note + vec[0]
+            curr_note_info['pitch'] = curr_note + vec[0] 
             curr_note_info['offset'] = curr_offset + vec[1]
             curr_note_info['duration'] = 0.25
             curr_note_info['velocity'] = 120
