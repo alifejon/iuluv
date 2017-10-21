@@ -98,15 +98,15 @@
         keyboard.set('priority', e.target.value);
       });
 
-      var MAX_MELODY_NUM = 10;  // 키보드 입력이 10개가 누적되면 서버로 보내어 대응되는 멜로디를 받아옴.
-      var MELODY_INTERVAL_SEC = 4;    // 3초가 키보드 입력이 없으면 그 동안 쌓아놓은 멜로디를 서버로 보내어 대응되는 멜로디를 받아옴.
+      var MAX_MELODY_NUM = 10;  
+      var MELODY_INTERVAL_SEC = 4;
 
-      var melody = [];    // 멜로디를 누적함
+      var melody = [];    
       var oscillators = {};       // oscillators by human
       var ai_oscillators = {};    // oscillators by AI
 
-      var timeOutList = [];     // timer를 관리하기 위함.
-      var keyInput = false;     // keyboard.down()이 호출되면 true, keyboard.up()이 호출되면 false
+      var timeOutList = [];     // 
+      var keyInput = false;     // 
 
       var clearTimer = function(){
         timeOutList.forEach(function(timeOut){

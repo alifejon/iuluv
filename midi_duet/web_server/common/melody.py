@@ -62,12 +62,7 @@ sess.as_default()
 
 class Melody:
     def __init__(self, pitch=0, duration=0, offset=0, velocity=0):
-        '''
-        'pitch': 0~127숫자값,
-        'duration': 0~elementsPerMeasure,
-        'offset': 0~elementsPerMeasure,
-        'velocity': 0~127숫자값
-        '''
+        
 
         self.pitch = pitch
         self.duration = duration
