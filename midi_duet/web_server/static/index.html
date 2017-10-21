@@ -62,7 +62,7 @@
           navigator.requestMIDIAccess().then( onMIDIStarted, onMIDISystemError );
 
 
-				socket = io.connect('localhost:5000/visual');
+				socket = io.connect('/visual');
 				socket.on('music_signal', function (data) {
 					console.log(data);  
 				});
@@ -99,7 +99,7 @@
       });
 
       var MAX_MELODY_NUM = 10;  // 키보드 입력이 10개가 누적되면 서버로 보내어 대응되는 멜로디를 받아옴.
-      var MELODY_INTERVAL_SEC = 4;    // 4초가 키보드 입력이 없으면 그 동안 쌓아놓은 멜로디를 서버로 보내어 대응되는 멜로디를 받아옴.
+      var MELODY_INTERVAL_SEC = 4;    // 3초가 키보드 입력이 없으면 그 동안 쌓아놓은 멜로디를 서버로 보내어 대응되는 멜로디를 받아옴.
 
       var melody = [];    // 멜로디를 누적함
       var oscillators = {};       // oscillators by human
